@@ -1,25 +1,19 @@
-import { NextResponse } from "next/server";
+import { updateSession } from "@/lib/supabase/middleware";
 import type { NextRequest } from "next/server";
 
-export function proxy(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-  const session = request.cookies.get("taskly_session");
-  const isAuthenticated = !!session?.value;
-
-  const isAuthPage = pathname === "/login" || pathname === "/register";
-  const isProtectedPage = pathname.startsWith("/dashboard");
-
-  if (isProtectedPage && !isAuthenticated) {
-    return NextResponse.redirect(new URL("/login", request.url));
-  }
-
-  if (isAuthPage && isAuthenticated) {
-    return NextResponse.redirect(new URL("/dashboard", request.url));
-  }
-
-  return NextResponse.next();
+export async function proxy(request: NextRequest) {
+  return await updateSession(request);
 }
 
 export const config = {
-  matcher: ["/dashboard/:path*", "/login", "/register"],
+  matcher: [
+    /*
+     * Match all request paths EXCEPT:
+     * - _next/static (static files)
+     * - _next/image  (image optimisation)
+     * - favicon.ico, sitemap.xml, robots.txt
+     * - public assets (svg, png, jpg …)
+     */
+    "/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+  ],
 };

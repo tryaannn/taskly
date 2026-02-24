@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import type { Task, Priority, FilterType, SortType, TaskStats } from "@/types";
+import type { Task, Priority, FilterType, SortType } from "@/types";
 import {
   getTasks,
   addTask as addTaskLib,
@@ -9,10 +9,10 @@ import {
   deleteCompletedTasks as deleteCompletedLib,
   toggleTask as toggleTaskLib,
   updateTask as updateTaskLib,
-  getCategories,
   type AddTaskOptions,
 } from "@/lib/tasks";
-import { isOverdue } from "@/lib/utils";
+
+// ─── State shape ──────────────────────────────────────────────────────────────
 
 interface TaskState {
   tasks: Task[];
@@ -20,13 +20,15 @@ interface TaskState {
   sort: SortType;
   search: string;
   categoryFilter: string;
+  loading: boolean;
+  error: string | null;
 
-  // Actions
-  init: (userId: string) => void;
-  addTask: (userId: string, options: AddTaskOptions) => Task;
-  deleteTask: (userId: string, taskId: string) => void;
-  deleteCompleted: (userId: string) => number;
-  toggleTask: (userId: string, taskId: string) => void;
+  // ── Actions (all async — delegate to API via lib/tasks) ──────────────────
+  init: (userId: string) => Promise<void>;
+  addTask: (userId: string, options: AddTaskOptions) => Promise<Task | null>;
+  deleteTask: (userId: string, taskId: string) => Promise<void>;
+  deleteCompleted: (userId: string) => Promise<number>;
+  toggleTask: (userId: string, taskId: string) => Promise<void>;
   editTask: (
     userId: string,
     taskId: string,
@@ -34,18 +36,16 @@ interface TaskState {
     priority: Priority,
     dueDate?: string,
     category?: string
-  ) => void;
+  ) => Promise<void>;
+
+  // ── Filter / sort actions (synchronous) ──────────────────────────────────
   setFilter: (filter: FilterType) => void;
   setSort: (sort: SortType) => void;
   setSearch: (search: string) => void;
   setCategoryFilter: (cat: string) => void;
-
-  // Computed (derived, not stored)
-  getFiltered: () => Task[];
-  getStats: () => TaskStats;
-  getCounts: () => Record<FilterType, number>;
-  getCategories: (userId: string) => string[];
 }
+
+// ─── Store ────────────────────────────────────────────────────────────────────
 
 export const useTaskStore = create<TaskState>((set, get) => ({
   tasks: [],
@@ -53,149 +53,140 @@ export const useTaskStore = create<TaskState>((set, get) => ({
   sort: "newest",
   search: "",
   categoryFilter: "",
+  loading: false,
+  error: null,
 
-  init: (userId) => {
-    set({ tasks: getTasks(userId) });
+  // ── Init: load all tasks from Supabase on mount ───────────────────────────
+  init: async (_userId) => {
+    set({ loading: true, error: null });
+    try {
+      const tasks = await getTasks();
+      set({ tasks, loading: false });
+    } catch (err) {
+      set({ loading: false, error: (err as Error).message });
+    }
   },
 
-  addTask: (userId, options) => {
-    const task = addTaskLib(userId, options);
-    // Optimistic update — prepend directly, no re-read
-    set((state) => ({ tasks: [task, ...state.tasks] }));
-    return task;
+  // ── Optimistic add: insert locally, then persist ──────────────────────────
+  addTask: async (userId, options) => {
+    // Optimistic placeholder so the UI feels instant
+    const optimisticId = `optimistic-${Date.now()}`;
+    const optimistic: Task = {
+      id: optimisticId,
+      userId,
+      text: options.text.trim(),
+      priority: options.priority,
+      completed: false,
+      createdAt: new Date().toISOString(),
+      dueDate: options.dueDate,
+      category: options.category?.trim() || undefined,
+    };
+    set((s) => ({ tasks: [optimistic, ...s.tasks] }));
+
+    try {
+      const persisted = await addTaskLib(userId, options);
+      // Swap optimistic entry with the real persisted record
+      set((s) => ({
+        tasks: s.tasks.map((t) => (t.id === optimisticId ? persisted : t)),
+      }));
+      return persisted;
+    } catch (err) {
+      // Rollback on failure
+      set((s) => ({
+        tasks: s.tasks.filter((t) => t.id !== optimisticId),
+        error: (err as Error).message,
+      }));
+      return null;
+    }
   },
 
-  deleteTask: (userId, taskId) => {
-    deleteTaskLib(userId, taskId);
-    // Optimistic update — remove immediately
-    set((state) => ({
-      tasks: state.tasks.filter((t) => t.id !== taskId),
+  // ── Optimistic delete ─────────────────────────────────────────────────────
+  deleteTask: async (userId, taskId) => {
+    const prev = get().tasks;
+    set((s) => ({ tasks: s.tasks.filter((t) => t.id !== taskId) }));
+    try {
+      await deleteTaskLib(userId, taskId);
+    } catch {
+      set({ tasks: prev }); // rollback
+    }
+  },
+
+  // ── Delete all completed ──────────────────────────────────────────────────
+  deleteCompleted: async (userId) => {
+    const prev = get().tasks;
+    const completed = prev.filter((t) => t.completed);
+    set((s) => ({ tasks: s.tasks.filter((t) => !t.completed) }));
+    try {
+      const count = await deleteCompletedLib(userId, prev);
+      return count;
+    } catch {
+      set({ tasks: prev }); // rollback
+      return 0;
+    }
+  },
+
+  // ── Optimistic toggle ─────────────────────────────────────────────────────
+  toggleTask: async (_userId, taskId) => {
+    const task = get().tasks.find((t) => t.id === taskId);
+    if (!task) return;
+
+    // Optimistic flip
+    const optimistic: Task = {
+      ...task,
+      completed: !task.completed,
+      completedAt: !task.completed ? new Date().toISOString() : undefined,
+    };
+    set((s) => ({
+      tasks: s.tasks.map((t) => (t.id === taskId ? optimistic : t)),
     }));
+
+    try {
+      const updated = await toggleTaskLib("", taskId, task.completed);
+      if (updated) {
+        set((s) => ({
+          tasks: s.tasks.map((t) => (t.id === taskId ? updated : t)),
+        }));
+      }
+    } catch {
+      // Rollback to original
+      set((s) => ({
+        tasks: s.tasks.map((t) => (t.id === taskId ? task : t)),
+      }));
+    }
   },
 
-  deleteCompleted: (userId) => {
-    const count = deleteCompletedLib(userId);
-    set((state) => ({ tasks: state.tasks.filter((t) => !t.completed) }));
-    return count;
-  },
+  // ── Optimistic edit ───────────────────────────────────────────────────────
+  editTask: async (_userId, taskId, text, priority, dueDate, category) => {
+    const task = get().tasks.find((t) => t.id === taskId);
+    if (!task) return;
 
-  toggleTask: (userId, taskId) => {
-    const updated = toggleTaskLib(userId, taskId);
-    if (!updated) return;
-    // Optimistic update — swap in-place
-    set((state) => ({
-      tasks: state.tasks.map((t) => (t.id === taskId ? updated : t)),
+    const optimistic: Task = { ...task, text, priority, dueDate, category };
+    set((s) => ({
+      tasks: s.tasks.map((t) => (t.id === taskId ? optimistic : t)),
     }));
+
+    try {
+      const updated = await updateTaskLib("", taskId, {
+        text,
+        priority,
+        dueDate,
+        category,
+      });
+      if (updated) {
+        set((s) => ({
+          tasks: s.tasks.map((t) => (t.id === taskId ? updated : t)),
+        }));
+      }
+    } catch {
+      set((s) => ({
+        tasks: s.tasks.map((t) => (t.id === taskId ? task : t)),
+      }));
+    }
   },
 
-  editTask: (userId, taskId, text, priority, dueDate, category) => {
-    const updated = updateTaskLib(userId, taskId, {
-      text,
-      priority,
-      dueDate,
-      category,
-    });
-    if (!updated) return;
-    set((state) => ({
-      tasks: state.tasks.map((t) => (t.id === taskId ? updated : t)),
-    }));
-  },
-
+  // ── Synchronous filter / sort setters ────────────────────────────────────
   setFilter: (filter) => set({ filter }),
   setSort: (sort) => set({ sort }),
   setSearch: (search) => set({ search }),
   setCategoryFilter: (cat) => set({ categoryFilter: cat }),
-
-  getFiltered: () => {
-    const { tasks, filter, sort, search, categoryFilter } = get();
-    let result = [...tasks];
-
-    // Search
-    if (search.trim()) {
-      const q = search.toLowerCase();
-      result = result.filter((t) => t.text.toLowerCase().includes(q));
-    }
-
-    // Category filter
-    if (categoryFilter) {
-      result = result.filter((t) => t.category === categoryFilter);
-    }
-
-    // Status filter
-    switch (filter) {
-      case "active":
-        result = result.filter((t) => !t.completed);
-        break;
-      case "completed":
-        result = result.filter((t) => t.completed);
-        break;
-      case "high":
-        result = result.filter((t) => t.priority === "high");
-        break;
-    }
-
-    // Sort
-    switch (sort) {
-      case "newest":
-        result.sort(
-          (a, b) =>
-            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
-        );
-        break;
-      case "oldest":
-        result.sort(
-          (a, b) =>
-            new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-        );
-        break;
-      case "az":
-        result.sort((a, b) => a.text.localeCompare(b.text));
-        break;
-      case "priority": {
-        const order: Record<Priority, number> = { high: 0, medium: 1, low: 2 };
-        result.sort((a, b) => order[a.priority] - order[b.priority]);
-        break;
-      }
-    }
-
-    return result;
-  },
-
-  getStats: (): TaskStats => {
-    const { tasks } = get();
-    // Single-pass computation
-    let completed = 0;
-    let highPriority = 0;
-    let overdue = 0;
-    for (const t of tasks) {
-      if (t.completed) {
-        completed++;
-      } else {
-        if (t.priority === "high") highPriority++;
-        if (isOverdue(t.dueDate)) overdue++;
-      }
-    }
-    return {
-      total: tasks.length,
-      completed,
-      active: tasks.length - completed,
-      highPriority,
-      overdue,
-    };
-  },
-
-  getCounts: () => {
-    const { tasks } = get();
-    let active = 0;
-    let completed = 0;
-    let high = 0;
-    for (const t of tasks) {
-      if (t.completed) completed++;
-      else active++;
-      if (t.priority === "high") high++;
-    }
-    return { all: tasks.length, active, completed, high };
-  },
-
-  getCategories: (userId) => getCategories(userId),
 }));

@@ -21,29 +21,42 @@
     --font-inter: "Inter", sans-serif;
     --font-geist-mono: "Geist Mono", monospace;
 
-    /* Light mode semantic tokens */
-    --bg-page: #ffffff;
-    --bg-surface: #f8f9fa;
+    --bg-page: #f9fafb;
+    --bg-surface: #ffffff;
     --bg-card: #ffffff;
     --text-primary: #0a0a0a;
     --text-secondary: #6b7280;
     --border-default: #e5e7eb;
     --border-hover: #d1d5db;
+
+    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.07),
+      0 1px 2px -1px rgb(0 0 0 / 0.07);
+    --shadow-card-hover: 0 4px 16px -2px rgb(0 0 0 / 0.1),
+      0 2px 6px -2px rgb(0 0 0 / 0.06);
+    --shadow-modal: 0 20px 60px -10px rgb(0 0 0 / 0.18);
   }
 
-  /* Dark mode overrides (class strategy) */
   :root.dark {
-    --bg-page: #0f0f0f;
-    --bg-surface: #1a1a1a;
-    --bg-card: #1f1f1f;
-    --text-primary: #f5f5f5;
-    --text-secondary: #9ca3af;
-    --border-default: #2d2d2d;
-    --border-hover: #404040;
+    --bg-page: #0c0c0d;
+    --bg-surface: #161618;
+    --bg-card: #1c1c1f;
+    --text-primary: #f2f2f7;
+    --text-secondary: #8e8e93;
+    --border-default: #2c2c2e;
+    --border-hover: #3a3a3c;
+
+    --shadow-card: 0 1px 3px 0 rgb(0 0 0 / 0.3), 0 1px 2px -1px rgb(0 0 0 / 0.3);
+    --shadow-card-hover: 0 4px 16px -2px rgb(0 0 0 / 0.4),
+      0 2px 6px -2px rgb(0 0 0 / 0.3);
+    --shadow-modal: 0 20px 60px -10px rgb(0 0 0 / 0.6);
   }
 
   * {
     box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
   }
 
   body {
@@ -52,42 +65,86 @@
     font-family: var(--font-inter), "Inter", sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
-    transition: background-color 0.2s ease, color 0.2s ease;
+    transition: background-color 0.25s ease, color 0.25s ease;
   }
 
   ::selection {
-    background: #eff6ff;
-    color: #2563eb;
+    background: #dbeafe;
+    color: #1d4ed8;
   }
 
-  /* Scrollbar */
   ::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
+    width: 5px;
+    height: 5px;
   }
   ::-webkit-scrollbar-track {
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #e5e7eb;
+    background: #d1d5db;
     border-radius: 999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #d1d5db;
+    background: #9ca3af;
   }
 
-  /* Dark scrollbar */
   .dark ::-webkit-scrollbar-thumb {
-    background: #404040;
+    background: #3a3a3c;
   }
   .dark ::-webkit-scrollbar-thumb:hover {
-    background: #525252;
+    background: #48484a;
   }
 }
 
 @layer utilities {
+  /* ── Animations ─────────────────────────────────────── */
   .animate-shake {
     animation: shake 0.4s ease-in-out;
+  }
+  .animate-pulse-slow {
+    animation: pulse 3s ease-in-out infinite;
+  }
+  .animate-float {
+    animation: float 3s ease-in-out infinite;
+  }
+
+  /* ── Glass effects ──────────────────────────────────── */
+  .glass {
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    background-color: rgba(255, 255, 255, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.6);
+  }
+  .dark .glass {
+    background-color: rgba(30, 30, 34, 0.78);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  /* ── Gradient text ─────────────────────────────────── */
+  .gradient-text {
+    background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  /* ── Card shadows ──────────────────────────────────── */
+  .card-shadow {
+    box-shadow: var(--shadow-card);
+  }
+  .card-shadow-hover {
+    box-shadow: var(--shadow-card-hover);
+  }
+
+  /* ── Glow ring ─────────────────────────────────────── */
+  .ring-glow-blue {
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+  }
+  .ring-glow-green {
+    box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.15);
+  }
+  .ring-glow-red {
+    box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.15);
   }
 }
 
@@ -107,5 +164,15 @@
   }
   80% {
     transform: translateX(4px);
+  }
+}
+
+@keyframes float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-6px);
   }
 }

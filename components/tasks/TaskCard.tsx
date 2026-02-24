@@ -21,6 +21,24 @@ interface TaskCardProps {
   ) => void;
 }
 
+const priorityBorder: Record<Priority, string> = {
+  high: "border-l-red-500",
+  medium: "border-l-amber-400",
+  low: "border-l-emerald-400",
+};
+
+const priorityCheckbox: Record<Priority, string> = {
+  high: "border-red-400 hover:border-red-500",
+  medium: "border-amber-400 hover:border-amber-500",
+  low: "border-emerald-400 hover:border-emerald-500",
+};
+
+const priorityCheckboxChecked: Record<Priority, string> = {
+  high: "bg-red-500 border-red-500",
+  medium: "bg-amber-500 border-amber-500",
+  low: "bg-emerald-500 border-emerald-500",
+};
+
 export function TaskCard({ task, onToggle, onDelete, onEdit }: TaskCardProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(task.text);
@@ -57,26 +75,41 @@ export function TaskCard({ task, onToggle, onDelete, onEdit }: TaskCardProps) {
     <>
       <motion.div
         layout
-        initial={{ opacity: 0, y: -10 }}
+        initial={{ opacity: 0, y: -8 }}
         animate={{ opacity: 1, y: 0 }}
-        exit={{ opacity: 0, x: -20, height: 0 }}
+        exit={{ opacity: 0, x: -16, height: 0 }}
         transition={{ duration: 0.2 }}
-        className="group flex items-start gap-3 bg-white border border-brand-border rounded-xl px-4 py-3.5 hover:border-gray-300 hover:shadow-sm transition-all duration-150"
+        className={cn(
+          "group flex items-start gap-3 rounded-xl px-4 py-3.5 transition-all duration-150",
+          "bg-(--bg-card) border border-(--border-default) border-l-[3px]",
+          "hover:border-(--border-hover) card-shadow card-shadow-hover",
+          priorityBorder[task.priority],
+          task.completed && "opacity-70"
+        )}
       >
         {/* Checkbox */}
         <button
           onClick={() => onToggle(task.id)}
-          aria-label={task.completed ? "Mark as active" : "Mark as completed"}
+          aria-label={task.completed ? "Tandai aktif" : "Tandai selesai"}
           className={cn(
-            "mt-0.5 h-5 w-5 shrink-0 rounded border-2 flex items-center justify-center transition-all duration-150",
+            "mt-0.5 h-5 w-5 shrink-0 rounded-md border-2 flex items-center justify-center transition-all duration-150",
             task.completed
-              ? "bg-brand-black border-brand-black"
-              : "border-gray-300 hover:border-brand-black"
+              ? priorityCheckboxChecked[task.priority]
+              : priorityCheckbox[task.priority]
           )}
         >
-          {task.completed && (
-            <Check className="h-3 w-3 text-white" strokeWidth={3} />
-          )}
+          <AnimatePresence>
+            {task.completed && (
+              <motion.span
+                initial={{ scale: 0 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0 }}
+                transition={{ duration: 0.12 }}
+              >
+                <Check className="h-3 w-3 text-white" strokeWidth={3} />
+              </motion.span>
+            )}
+          </AnimatePresence>
         </button>
 
         {/* Content */}
@@ -91,41 +124,41 @@ export function TaskCard({ task, onToggle, onDelete, onEdit }: TaskCardProps) {
                   if (e.key === "Enter") handleSave();
                   if (e.key === "Escape") handleCancel();
                 }}
-                className="w-full text-sm border border-brand-border rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                className="w-full text-sm border border-(--border-default) rounded-lg px-3 py-1.5 bg-(--bg-card) text-(--text-primary) focus:outline-none focus:ring-2 focus:ring-brand-blue"
               />
               <div className="flex items-center gap-2 flex-wrap">
                 <select
                   value={editPriority}
                   onChange={(e) => setEditPriority(e.target.value as Priority)}
-                  className="text-xs border border-brand-border rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                  className="text-xs border border-(--border-default) rounded-md px-2 py-1 bg-(--bg-card) text-(--text-primary) focus:outline-none focus:ring-2 focus:ring-brand-blue"
                 >
-                  <option value="high">High</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
+                  <option value="high">Tinggi</option>
+                  <option value="medium">Sedang</option>
+                  <option value="low">Rendah</option>
                 </select>
                 <input
                   type="date"
                   value={editDueDate}
                   min={today}
                   onChange={(e) => setEditDueDate(e.target.value)}
-                  className="text-xs border border-brand-border rounded-md px-2 py-1 focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                  className="text-xs border border-(--border-default) rounded-md px-2 py-1 bg-(--bg-card) text-(--text-primary) focus:outline-none focus:ring-2 focus:ring-brand-blue"
                 />
                 <input
                   type="text"
                   value={editCategory}
                   onChange={(e) => setEditCategory(e.target.value)}
                   placeholder="Kategori..."
-                  className="text-xs border border-brand-border rounded-md px-2 py-1 w-28 focus:outline-none focus:ring-2 focus:ring-brand-blue"
+                  className="text-xs border border-(--border-default) rounded-md px-2 py-1 w-28 bg-(--bg-card) text-(--text-primary) focus:outline-none focus:ring-2 focus:ring-brand-blue"
                 />
                 <button
                   onClick={handleSave}
-                  className="text-xs bg-brand-black text-white px-3 py-1 rounded-md hover:bg-neutral-800"
+                  className="text-xs bg-brand-blue text-white px-3 py-1 rounded-md hover:bg-brand-blue-hover transition-colors"
                 >
                   Simpan
                 </button>
                 <button
                   onClick={handleCancel}
-                  className="text-xs text-brand-muted hover:text-brand-black px-2 py-1"
+                  className="text-xs text-(--text-secondary) hover:text-(--text-primary) px-2 py-1"
                 >
                   Batal
                 </button>
@@ -135,8 +168,8 @@ export function TaskCard({ task, onToggle, onDelete, onEdit }: TaskCardProps) {
             <>
               <p
                 className={cn(
-                  "text-sm text-brand-black leading-snug break-words",
-                  task.completed && "line-through text-brand-muted"
+                  "text-sm text-(--text-primary) leading-snug wrap-break-word",
+                  task.completed && "line-through text-(--text-secondary)"
                 )}
               >
                 {task.text}
@@ -144,26 +177,24 @@ export function TaskCard({ task, onToggle, onDelete, onEdit }: TaskCardProps) {
               <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                 <Badge priority={task.priority} />
 
-                {/* Category chip */}
                 {task.category && (
-                  <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400">
                     <Tag className="h-2.5 w-2.5" />
                     {task.category}
                   </span>
                 )}
 
-                {/* Due date chip */}
                 {due && (
                   <span
                     className={cn(
-                      "inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full border",
+                      "inline-flex items-center gap-1 text-[10px] font-medium px-2 py-0.5 rounded-full",
                       due.isOverdue && !task.completed
-                        ? "bg-red-50 text-brand-danger border-red-200"
+                        ? "bg-red-50 text-brand-danger dark:bg-red-950/40 dark:text-red-400"
                         : due.isDueToday && !task.completed
-                        ? "bg-amber-50 text-amber-700 border-amber-200"
+                        ? "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400"
                         : due.isDueSoon && !task.completed
-                        ? "bg-yellow-50 text-yellow-700 border-yellow-200"
-                        : "bg-gray-50 text-brand-muted border-brand-border"
+                        ? "bg-yellow-50 text-yellow-700 dark:bg-yellow-950/40 dark:text-yellow-400"
+                        : "bg-(--bg-surface) text-(--text-secondary)"
                     )}
                   >
                     <Clock className="h-2.5 w-2.5" />
@@ -171,7 +202,7 @@ export function TaskCard({ task, onToggle, onDelete, onEdit }: TaskCardProps) {
                   </span>
                 )}
 
-                <span className="text-xs text-brand-muted font-mono">
+                <span className="text-[10px] text-(--text-secondary) font-mono">
                   {formatTime(task.createdAt)}
                 </span>
               </div>
@@ -181,18 +212,18 @@ export function TaskCard({ task, onToggle, onDelete, onEdit }: TaskCardProps) {
 
         {/* Actions */}
         {!isEditing && (
-          <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity duration-150 shrink-0">
+          <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-150 shrink-0">
             <button
               onClick={() => setIsEditing(true)}
-              className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-brand-surface text-brand-muted hover:text-brand-black transition-colors"
-              aria-label="Edit task"
+              className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-(--bg-surface) text-(--text-secondary) hover:text-(--text-primary) transition-colors"
+              aria-label="Edit tugas"
             >
               <Pencil className="h-3.5 w-3.5" />
             </button>
             <button
               onClick={() => setShowConfirm(true)}
-              className="h-7 w-7 flex items-center justify-center rounded-md hover:bg-red-50 text-brand-muted hover:text-brand-danger transition-colors"
-              aria-label="Delete task"
+              className="h-7 w-7 flex items-center justify-center rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30 text-(--text-secondary) hover:text-brand-danger transition-colors"
+              aria-label="Hapus tugas"
             >
               <Trash2 className="h-3.5 w-3.5" />
             </button>

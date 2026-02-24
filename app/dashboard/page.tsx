@@ -26,7 +26,7 @@ import type { Priority } from "@/types";
 import type { AddTaskOptions } from "@/lib/tasks";
 
 const fadeUp = {
-  hidden: { opacity: 0, y: 16 },
+  hidden: { opacity: 0, y: 14 },
   visible: { opacity: 1, y: 0 },
 };
 
@@ -54,9 +54,9 @@ export default function DashboardPage() {
     deleteCompleted,
     toggleTask,
     editTask,
+    loading: tasksLoading,
   } = useTasks(session?.userId);
 
-  // Keyboard shortcuts
   useKeyboard({
     n: () => inputRef.current?.focus(),
     escape: () => {
@@ -74,54 +74,62 @@ export default function DashboardPage() {
 
   if (loading || !session) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 border-2 border-brand-blue border-t-transparent rounded-full animate-spin" />
-          <span className="text-sm text-brand-muted">Memuat...</span>
+      <div className="min-h-screen flex items-center justify-center bg-(--bg-page)">
+        <div className="flex flex-col items-center gap-4">
+          <div className="relative h-12 w-12">
+            <div className="h-12 w-12 rounded-full border-2 border-(--border-default)" />
+            <div className="absolute inset-0 h-12 w-12 rounded-full border-t-2 border-brand-blue animate-spin" />
+          </div>
+          <span className="text-sm font-medium text-(--text-secondary)">
+            Memuat...
+          </span>
         </div>
       </div>
     );
   }
 
-  const handleAdd = (opts: AddTaskOptions) => {
-    addTask(opts);
-    addToast("\u2705 Tugas berhasil ditambahkan");
+  const handleAdd = async (opts: AddTaskOptions) => {
+    await addTask(opts);
+    addToast("Tugas berhasil ditambahkan", "success");
   };
 
-  const handleDelete = (id: string) => {
-    deleteTask(id);
-    addToast("\uD83D\uDDD1\uFE0F Tugas dihapus", "info");
+  const handleDelete = async (id: string) => {
+    await deleteTask(id);
+    addToast("Tugas dihapus", "info");
   };
 
-  const handleToggle = (id: string) => {
-    toggleTask(id);
-    addToast("\u2714\uFE0F Status tugas diperbarui", "success");
+  const handleToggle = async (id: string) => {
+    await toggleTask(id);
+    addToast("Status tugas diperbarui", "success");
   };
 
-  const handleEdit = (
+  const handleEdit = async (
     id: string,
     text: string,
     priority: Priority,
     dueDate?: string,
     category?: string
   ) => {
-    editTask(id, text, priority, dueDate, category);
-    addToast("\u270F\uFE0F Tugas diperbarui", "success");
+    await editTask(id, text, priority, dueDate, category);
+    addToast("Tugas diperbarui", "success");
   };
 
-  const handleDeleteCompleted = () => {
-    const n = deleteCompleted();
-    addToast(`\uD83D\uDDD1\uFE0F ${n} tugas selesai dihapus`, "info");
+  const handleDeleteCompleted = async () => {
+    const n = await deleteCompleted();
+    addToast(`${n} tugas selesai dihapus`, "info");
   };
 
   const focusInput = () => inputRef.current?.focus();
 
   const activeCount = stats.active;
+  const completionPct =
+    stats.total > 0 ? Math.round((stats.completed / stats.total) * 100) : 0;
   const greeting = getGreeting();
   const fullDate = getFullDate();
+  const firstName = session.name.split(" ")[0];
 
   return (
-    <div className="min-h-screen bg-white">
+    <div className="min-h-screen bg-(--bg-page)">
       <Topbar
         session={session}
         search={search}
@@ -129,85 +137,112 @@ export default function DashboardPage() {
         onLogout={handleLogout}
       />
 
-      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-8">
+      <main className="max-w-3xl mx-auto px-4 sm:px-6 py-8 space-y-6">
         {/* Hero Header */}
         <motion.section
           initial="hidden"
           animate="visible"
-          variants={{ visible: { transition: { staggerChildren: 0.1 } } }}
+          variants={{ visible: { transition: { staggerChildren: 0.08 } } }}
           className="space-y-1"
         >
-          <motion.p variants={fadeUp} className="text-sm text-brand-muted">
-            Selamat {greeting},
+          <motion.p
+            variants={fadeUp}
+            className="text-sm text-(--text-secondary)"
+          >
+            {greeting},
           </motion.p>
           <motion.h1
             variants={fadeUp}
-            className="text-3xl font-bold text-brand-black"
+            className="text-3xl font-bold text-(--text-primary) flex items-center gap-2"
           >
-            {session.name.split(" ")[0]}{" "}
-            <span className="text-brand-blue">👋</span>
+            <span className="gradient-text">{firstName}</span>
+            <span>👋</span>
           </motion.h1>
-          <motion.p variants={fadeUp} className="text-sm text-brand-muted">
-            {fullDate}
-          </motion.p>
           <motion.p
             variants={fadeUp}
-            className="text-sm text-brand-black font-medium pt-1"
+            className="text-xs text-(--text-secondary)"
           >
-            {activeCount === 0
-              ? "Semua tugas selesai! Luar biasa 🎉"
-              : `Kamu punya ${activeCount} tugas yang perlu diselesaikan.`}
-            {stats.overdue > 0 && (
-              <span className="text-brand-danger ml-1">
-                ({stats.overdue} terlambat!)
-              </span>
-            )}
+            {fullDate}
           </motion.p>
+
+          {/* Summary + progress */}
+          <motion.div variants={fadeUp} className="pt-2 space-y-2">
+            <p className="text-sm text-(--text-secondary) font-medium">
+              {activeCount === 0
+                ? "Semua tugas selesai! Luar biasa 🎉"
+                : `${activeCount} tugas perlu diselesaikan.`}
+              {stats.overdue > 0 && (
+                <span className="text-brand-danger ml-1.5 font-semibold">
+                  {stats.overdue} terlambat!
+                </span>
+              )}
+            </p>
+            {stats.total > 0 && (
+              <div className="space-y-1">
+                <div className="h-1.5 w-full rounded-full bg-(--border-default) overflow-hidden">
+                  <motion.div
+                    initial={{ width: 0 }}
+                    animate={{ width: `${completionPct}%` }}
+                    transition={{ duration: 0.6, ease: "easeOut", delay: 0.3 }}
+                    className="h-full rounded-full bg-linear-to-r from-brand-blue to-violet-500"
+                  />
+                </div>
+                <p className="text-[11px] text-(--text-secondary)">
+                  {completionPct}% selesai
+                </p>
+              </div>
+            )}
+          </motion.div>
         </motion.section>
 
         {/* Stats */}
         <motion.section
-          initial={{ opacity: 0, y: 16 }}
+          initial={{ opacity: 0, y: 14 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.25, duration: 0.4 }}
-          className="flex gap-3 flex-wrap sm:flex-nowrap"
+          transition={{ delay: 0.2, duration: 0.4 }}
+          className="grid grid-cols-2 sm:flex gap-2.5 sm:flex-nowrap"
         >
           <StatsCard
-            label="Total Tugas"
+            label="Total"
             value={stats.total}
-            icon={<ClipboardList className="h-5 w-5" />}
+            icon={<ClipboardList className="h-4 w-4" />}
+            iconBgClass="bg-gray-100 dark:bg-white/10"
           />
           <StatsCard
             label="Selesai"
             value={stats.completed}
-            icon={<CheckCircle className="h-5 w-5" />}
+            icon={<CheckCircle className="h-4 w-4" />}
             colorClass="text-brand-success"
+            iconBgClass="bg-emerald-50 dark:bg-emerald-950/40"
           />
           <StatsCard
             label="Aktif"
             value={stats.active}
-            icon={<Clock className="h-5 w-5" />}
+            icon={<Clock className="h-4 w-4" />}
             colorClass="text-brand-blue"
+            iconBgClass="bg-blue-50 dark:bg-blue-950/40"
           />
           <StatsCard
-            label="Prioritas Tinggi"
+            label="Prioritas"
             value={stats.highPriority}
-            icon={<AlertCircle className="h-5 w-5" />}
+            icon={<AlertCircle className="h-4 w-4" />}
             colorClass="text-brand-danger"
+            iconBgClass="bg-red-50 dark:bg-red-950/40"
           />
           <StatsCard
             label="Terlambat"
             value={stats.overdue}
-            icon={<AlertTriangle className="h-5 w-5" />}
+            icon={<AlertTriangle className="h-4 w-4" />}
             colorClass="text-brand-warning"
+            iconBgClass="bg-amber-50 dark:bg-amber-950/40"
           />
         </motion.section>
 
         {/* Add Task */}
         <motion.section
-          initial={{ opacity: 0, y: 12 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.35, duration: 0.4 }}
+          transition={{ delay: 0.3, duration: 0.4 }}
         >
           <AddTaskForm
             onAdd={handleAdd}
@@ -220,7 +255,7 @@ export default function DashboardPage() {
         <motion.section
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.45 }}
+          transition={{ delay: 0.4 }}
         >
           <FilterBar
             filter={filter}
@@ -238,7 +273,7 @@ export default function DashboardPage() {
         <motion.section
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
+          transition={{ delay: 0.45 }}
         >
           <BulkActions
             completedCount={stats.completed}

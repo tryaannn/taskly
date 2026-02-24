@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Bell, LogOut, Search, ChevronDown } from "lucide-react";
+import { Bell, LogOut, Search, ChevronDown, Settings } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import type { AuthSession } from "@/types";
 import { getInitials } from "@/lib/utils";
 import { cn } from "@/lib/utils";
@@ -21,6 +22,7 @@ export function Topbar({
   onLogout,
 }: TopbarProps) {
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [searchFocused, setSearchFocused] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -36,84 +38,137 @@ export function Topbar({
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  const initials = getInitials(session.name);
+
   return (
-    <header className="sticky top-0 z-40 h-16 bg-white border-b border-brand-border flex items-center px-6 gap-4">
+    <header
+      className={cn(
+        "sticky top-0 z-40 h-16",
+        "glass border-b border-(--border-default)",
+        "flex items-center px-4 sm:px-6 gap-4"
+      )}
+    >
       {/* Logo */}
-      <div className="flex items-center gap-1.5 shrink-0">
-        <span className="h-2 w-2 rounded-full bg-brand-blue" />
-        <span className="text-lg font-bold tracking-tight text-brand-black font-sans">
+      <div className="flex items-center gap-2 shrink-0">
+        <div className="relative h-7 w-7 flex items-center justify-center rounded-lg bg-gradient-to-br from-brand-blue to-violet-600 shadow-sm">
+          <span className="text-white font-black text-xs tracking-tight">
+            T
+          </span>
+        </div>
+        <span className="text-base font-bold tracking-tight text-(--text-primary) hidden sm:block">
           Taskly
         </span>
       </div>
 
       {/* Search — desktop */}
       <div className="flex-1 max-w-md mx-auto hidden sm:block">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-brand-muted" />
+        <motion.div
+          animate={{
+            boxShadow: searchFocused
+              ? "0 0 0 3px rgba(37,99,235,0.15)"
+              : "0 0 0 0px transparent",
+          }}
+          transition={{ duration: 0.18 }}
+          className={cn(
+            "relative rounded-lg transition-colors duration-150",
+            searchFocused
+              ? "ring-1 ring-brand-blue"
+              : "ring-1 ring-(--border-default)"
+          )}
+        >
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-(--text-secondary)" />
           <input
             type="text"
             value={search}
             onChange={(e) => onSearchChange(e.target.value)}
+            onFocus={() => setSearchFocused(true)}
+            onBlur={() => setSearchFocused(false)}
             placeholder="Cari tugas..."
-            className="w-full h-9 pl-9 pr-4 rounded-lg border border-brand-border bg-brand-surface text-sm text-brand-black placeholder:text-brand-muted focus:outline-none focus:ring-2 focus:ring-brand-blue focus:bg-white transition-all"
+            className="w-full h-9 pl-9 pr-4 rounded-lg bg-(--bg-card) text-sm text-(--text-primary) placeholder:text-(--text-secondary) focus:outline-none transition-all"
           />
-        </div>
+        </motion.div>
       </div>
 
-      <div className="ml-auto flex items-center gap-3">
-        {/* Dark mode toggle */}
+      <div className="ml-auto flex items-center gap-1.5">
         <ThemeToggle />
 
-        {/* Bell */}
         <button
-          className="h-9 w-9 flex items-center justify-center rounded-lg hover:bg-brand-surface transition-colors relative"
+          className="h-8 w-8 flex items-center justify-center rounded-lg hover:bg-(--bg-surface) transition-colors"
           aria-label="Notifications"
         >
-          <Bell className="h-4.5 w-4.5 text-brand-muted" />
+          <Bell className="h-4 w-4 text-(--text-secondary)" />
         </button>
 
         {/* User dropdown */}
         <div ref={dropdownRef} className="relative">
           <button
             onClick={() => setDropdownOpen((v) => !v)}
-            className="flex items-center gap-2 h-9 pl-2 pr-3 rounded-lg hover:bg-brand-surface transition-colors"
+            className={cn(
+              "flex items-center gap-2 h-9 pl-1.5 pr-2.5 rounded-xl transition-colors",
+              "hover:bg-(--bg-surface)"
+            )}
           >
-            <div className="h-7 w-7 rounded-full bg-brand-black text-white flex items-center justify-center text-xs font-bold shrink-0">
-              {getInitials(session.name)}
+            {/* Avatar */}
+            <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-brand-blue to-violet-600 text-white flex items-center justify-center text-[11px] font-bold shrink-0 shadow-sm">
+              {initials}
             </div>
-            <span className="hidden sm:block text-sm font-medium text-brand-black max-w-30 truncate">
+            <span className="hidden md:block text-sm font-medium text-(--text-primary) max-w-[8rem] truncate">
               {session.name}
             </span>
             <ChevronDown
               className={cn(
-                "h-3.5 w-3.5 text-brand-muted transition-transform duration-150",
+                "h-3.5 w-3.5 text-(--text-secondary) transition-transform duration-200",
                 dropdownOpen && "rotate-180"
               )}
             />
           </button>
 
-          {dropdownOpen && (
-            <div className="absolute right-0 top-11 w-48 bg-white border border-brand-border rounded-xl shadow-lg py-1 z-50">
-              <div className="px-4 py-2.5 border-b border-brand-border">
-                <p className="text-sm font-medium text-brand-black truncate">
-                  {session.name}
-                </p>
-                <p className="text-xs text-brand-muted truncate">
-                  {session.email}
-                </p>
-              </div>
-              <button
-                onClick={() => {
-                  setDropdownOpen(false);
-                  onLogout();
-                }}
-                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-brand-danger hover:bg-red-50 transition-colors"
+          <AnimatePresence>
+            {dropdownOpen && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: -4 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: -4 }}
+                transition={{ duration: 0.15, ease: "easeOut" }}
+                className={cn(
+                  "absolute right-0 top-11 w-56 z-50",
+                  "glass rounded-xl border border-(--border-default) shadow-xl overflow-hidden"
+                )}
               >
-                <LogOut className="h-4 w-4" />
-                Keluar
-              </button>
-            </div>
-          )}
+                {/* User header */}
+                <div className="px-4 py-3 border-b border-(--border-default) flex items-center gap-3">
+                  <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-brand-blue to-violet-600 text-white flex items-center justify-center text-sm font-bold shrink-0">
+                    {initials}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-(--text-primary) truncate">
+                      {session.name}
+                    </p>
+                    <p className="text-xs text-(--text-secondary) truncate">
+                      {session.email}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="py-1">
+                  <button className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-(--text-secondary) hover:bg-(--bg-surface) transition-colors">
+                    <Settings className="h-3.5 w-3.5 text-(--text-secondary)" />
+                    Pengaturan
+                  </button>
+                  <button
+                    onClick={() => {
+                      setDropdownOpen(false);
+                      onLogout();
+                    }}
+                    className="w-full flex items-center gap-2.5 px-4 py-2 text-sm text-brand-danger hover:bg-red-50 dark:hover:bg-red-950/30 transition-colors"
+                  >
+                    <LogOut className="h-3.5 w-3.5" />
+                    Keluar
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </header>

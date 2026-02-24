@@ -6,31 +6,40 @@ interface BadgeProps {
   className?: string;
 }
 
-const config: Record<Priority, { label: string; className: string }> = {
+const config: Record<
+  Priority,
+  { label: string; dot: string; className: string }
+> = {
   high: {
-    label: "HIGH",
-    className: "bg-brand-blue-light text-brand-blue border border-blue-200",
+    label: "Tinggi",
+    dot: "bg-red-500",
+    className: "bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-400",
   },
   medium: {
-    label: "MED",
-    className: "bg-gray-100 text-gray-600 border border-gray-200",
+    label: "Sedang",
+    dot: "bg-amber-500",
+    className:
+      "bg-amber-50 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400",
   },
   low: {
-    label: "LOW",
-    className: "bg-gray-50 text-gray-400 border border-gray-100",
+    label: "Rendah",
+    dot: "bg-emerald-500",
+    className:
+      "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400",
   },
 };
 
 export function Badge({ priority, className }: BadgeProps) {
-  const { label, className: badgeClass } = config[priority];
+  const { label, dot, className: badgeClass } = config[priority];
   return (
     <span
       className={cn(
-        "inline-flex items-center px-2 py-0.5 rounded-md text-xs font-semibold tracking-wide",
+        "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-[11px] font-semibold",
         badgeClass,
         className
       )}
     >
+      <span className={cn("h-1.5 w-1.5 rounded-full shrink-0", dot)} />
       {label}
     </span>
   );

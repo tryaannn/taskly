@@ -28,7 +28,7 @@ export function ThemeToggle() {
     <button
       onClick={toggle}
       aria-label={dark ? "Aktifkan mode terang" : "Aktifkan mode gelap"}
-      className="relative h-8 w-8 rounded-lg flex items-center justify-center text-brand-muted hover:text-brand-black dark:hover:text-white hover:bg-brand-surface dark:hover:bg-white/10 transition-colors"
+      className="relative h-8 w-8 rounded-lg flex items-center justify-center text-(--text-secondary) hover:text-(--text-primary) hover:bg-(--bg-surface) transition-colors"
     >
       <AnimatePresence mode="wait" initial={false}>
         {dark ? (

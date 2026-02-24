@@ -65,31 +65,31 @@ export function ConfirmDialog({
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 8 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
-            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-white rounded-2xl shadow-xl border border-brand-border w-full max-w-sm mx-4 p-6"
+            className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 z-50 bg-(--bg-card) rounded-2xl shadow-xl border border-(--border-default) w-full max-w-sm mx-4 p-6"
           >
             <div className="flex items-start gap-4">
               {danger && (
-                <div className="shrink-0 h-10 w-10 rounded-full bg-red-50 flex items-center justify-center">
+                <div className="shrink-0 h-10 w-10 rounded-xl bg-red-50 dark:bg-red-950/40 flex items-center justify-center">
                   <AlertTriangle className="h-5 w-5 text-brand-danger" />
                 </div>
               )}
               <div className="flex-1 min-w-0">
                 <h2
                   id="confirm-title"
-                  className="text-base font-semibold text-brand-black"
+                  className="text-base font-semibold text-(--text-primary)"
                 >
                   {title}
                 </h2>
                 <p
                   id="confirm-desc"
-                  className="text-sm text-brand-muted mt-1 leading-relaxed"
+                  className="text-sm text-(--text-secondary) mt-1 leading-relaxed"
                 >
                   {message}
                 </p>
               </div>
               <button
                 onClick={onCancel}
-                className="shrink-0 text-brand-muted hover:text-brand-black transition-colors"
+                className="shrink-0 text-(--text-secondary) hover:text-(--text-primary) transition-colors"
                 aria-label="Tutup dialog"
               >
                 <X className="h-4 w-4" />

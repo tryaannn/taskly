@@ -1,128 +1,98 @@
-import type { User, AuthSession } from "@/types";
-import { generateId, hashPassword } from "./utils";
+/**
+ * lib/auth.ts — Client-side auth helpers.
+ *
+ * All mutating operations (login / register / logout) are delegated to
+ * Next.js API routes so that:
+ *   • Passwords are hashed with bcrypt (Supabase internal)
+ *   • Session tokens are stored in HttpOnly cookies set by the server
+ *   • Rate limiting and Zod validation run server-side
+ *
+ * getSession() uses the Supabase browser client which reads the cookies
+ * set by the server and verifies the JWT with Supabase's servers.
+ */
 
-const USERS_KEY = "taskly_users";
-const SESSION_KEY = "taskly_session";
-const SESSION_COOKIE = "taskly_session";
+import { createClient } from "./supabase/client";
+import type { AuthSession } from "@/types";
 
-function getUsers(): User[] {
-  if (typeof window === "undefined") return [];
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+async function apiPost(
+  path: string,
+  body: Record<string, unknown>
+): Promise<{ success: boolean; error?: string }> {
   try {
-    const raw = localStorage.getItem(USERS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const res = await fetch(path, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    const data = (await res.json()) as { error?: string };
+    if (!res.ok)
+      return { success: false, error: data.error ?? "Terjadi kesalahan." };
+    return { success: true };
   } catch {
-    return [];
+    return { success: false, error: "Tidak dapat terhubung ke server." };
   }
 }
 
-function saveUsers(users: User[]): void {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-}
+// ─── Public API ───────────────────────────────────────────────────────────────
 
-function setSession(session: AuthSession): void {
-  localStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  // Sync cookie for middleware (server-readable)
-  document.cookie = `${SESSION_COOKIE}=${encodeURIComponent(
-    JSON.stringify(session)
-  )}; path=/; max-age=${60 * 60 * 24 * 7}; SameSite=Lax`;
-}
-
-function clearSession(): void {
-  localStorage.removeItem(SESSION_KEY);
-  document.cookie = `${SESSION_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
-}
-
+/**
+ * Register a new user.
+ * Delegates to POST /api/auth/register which applies:
+ *   - Zod validation, rate limiting, Supabase bcrypt hashing.
+ */
 export async function register(
   name: string,
   email: string,
   password: string
 ): Promise<{ success: boolean; error?: string }> {
-  const users = getUsers();
-  const exists = users.find(
-    (u) => u.email.toLowerCase() === email.toLowerCase()
-  );
-  if (exists) {
-    return { success: false, error: "Email sudah terdaftar." };
-  }
-
-  const hashedPassword = await hashPassword(password);
-
-  const newUser: User = {
-    id: generateId(),
-    name: name.trim(),
-    email: email.toLowerCase().trim(),
-    password: hashedPassword,
-    createdAt: new Date().toISOString(),
-  };
-  saveUsers([...users, newUser]);
-
-  const session: AuthSession = {
-    userId: newUser.id,
-    name: newUser.name,
-    email: newUser.email,
-    loginAt: new Date().toISOString(),
-  };
-  setSession(session);
-  return { success: true };
+  return apiPost("/api/auth/register", { name, email, password });
 }
 
+/**
+ * Sign in with email + password.
+ * Delegates to POST /api/auth/login which applies:
+ *   - Zod validation, per-IP + per-email rate limiting.
+ *   - On success, Supabase sets HttpOnly session cookies in the response.
+ */
 export async function login(
   email: string,
   password: string
 ): Promise<{ success: boolean; error?: string }> {
-  const users = getUsers();
-  const hashedPassword = await hashPassword(password);
-
-  const user = users.find(
-    (u) =>
-      u.email.toLowerCase() === email.toLowerCase() &&
-      u.password === hashedPassword
-  );
-  if (!user) {
-    return { success: false, error: "Email atau kata sandi salah." };
-  }
-
-  const session: AuthSession = {
-    userId: user.id,
-    name: user.name,
-    email: user.email,
-    loginAt: new Date().toISOString(),
-  };
-  setSession(session);
-  return { success: true };
-}
-
-export function logout(): void {
-  clearSession();
-}
-
-export function getSession(): AuthSession | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(SESSION_KEY);
-    if (!raw) return null;
-    const session: AuthSession = JSON.parse(raw);
-    // Validate session has required fields
-    if (!session.userId || !session.email) return null;
-    return session;
-  } catch {
-    return null;
-  }
-}
-
-export function isAuthenticated(): boolean {
-  return getSession() !== null;
+  return apiPost("/api/auth/login", { email, password });
 }
 
 /**
- * Sync check: if localStorage session is missing but cookie exists,
- * the cookie is stale — clear it. Call this on app boot.
+ * Sign out — clears the Supabase session cookies server-side.
  */
-export function syncSessionCookie(): void {
-  if (typeof window === "undefined") return;
-  const raw = localStorage.getItem(SESSION_KEY);
-  if (!raw) {
-    // localStorage was cleared manually — purge stale cookie
-    document.cookie = `${SESSION_COOKIE}=; path=/; max-age=0; SameSite=Lax`;
-  }
+export async function logout(): Promise<void> {
+  await fetch("/api/auth/logout", { method: "POST" });
+}
+
+/**
+ * Returns the current authenticated user's session.
+ * The browser client reads the HttpOnly-compatible cookies that were set
+ * by the server during login, then verifies the JWT with Supabase.
+ */
+export async function getSession(): Promise<AuthSession | null> {
+  const supabase = createClient();
+  const {
+    data: { user },
+    error,
+  } = await supabase.auth.getUser();
+
+  if (error || !user) return null;
+
+  return {
+    userId: user.id,
+    name: (user.user_metadata?.name as string | undefined) ?? user.email ?? "",
+    email: user.email ?? "",
+    loginAt: user.last_sign_in_at ?? new Date().toISOString(),
+  };
+}
+
+/** Convenience boolean wrapper around getSession(). */
+export async function isAuthenticated(): Promise<boolean> {
+  return (await getSession()) !== null;
 }

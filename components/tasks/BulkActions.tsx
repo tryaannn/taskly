@@ -21,16 +21,18 @@ export function BulkActions({
       <AnimatePresence>
         {completedCount > 0 && (
           <motion.div
-            initial={{ opacity: 0, y: 4 }}
+            initial={{ opacity: 0, y: 6 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 4 }}
+            exit={{ opacity: 0, y: 6 }}
             transition={{ duration: 0.2 }}
-            className="flex items-center justify-between bg-brand-surface border border-brand-border rounded-xl px-4 py-2.5"
+            className="flex items-center justify-between rounded-xl px-4 py-2.5 border border-(--border-default) bg-(--bg-card)"
           >
-            <div className="flex items-center gap-2 text-sm text-brand-muted">
-              <CheckCheck className="h-4 w-4 text-brand-success" />
+            <div className="flex items-center gap-2.5 text-sm text-(--text-secondary)">
+              <div className="h-7 w-7 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
+                <CheckCheck className="h-3.5 w-3.5 text-brand-success" />
+              </div>
               <span>
-                <span className="font-semibold text-brand-black">
+                <span className="font-semibold text-(--text-primary)">
                   {completedCount}
                 </span>{" "}
                 tugas selesai
@@ -38,7 +40,7 @@ export function BulkActions({
             </div>
             <button
               onClick={() => setShowConfirm(true)}
-              className="inline-flex items-center gap-1.5 text-xs font-medium text-brand-danger hover:text-red-700 transition-colors"
+              className="inline-flex items-center gap-1.5 text-xs font-semibold text-brand-danger hover:text-red-700 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/30"
             >
               <Trash2 className="h-3.5 w-3.5" />
               Hapus semua

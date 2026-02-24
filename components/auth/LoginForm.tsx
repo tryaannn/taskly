@@ -63,14 +63,16 @@ export function LoginForm({
       className="flex flex-col gap-4"
     >
       <div>
-        <h2 className="text-2xl font-bold text-brand-black">Masuk ke Taskly</h2>
-        <p className="text-sm text-brand-muted mt-1">
+        <h2 className="text-2xl font-bold text-(--text-primary)">
+          Masuk ke Taskly
+        </h2>
+        <p className="text-sm text-(--text-secondary) mt-1">
           Lanjutkan produktivitas kamu hari ini.
         </p>
       </div>
 
       {errors.general && (
-        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-brand-danger">
+        <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3 text-sm text-brand-danger">
           {errors.general}
         </div>
       )}
@@ -121,7 +123,7 @@ export function LoginForm({
         Masuk
       </Button>
 
-      <p className="text-sm text-center text-brand-muted">
+      <p className="text-sm text-center text-(--text-secondary)">
         Belum punya akun?{" "}
         <button
           type="button"

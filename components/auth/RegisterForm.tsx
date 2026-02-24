@@ -37,11 +37,14 @@ export function RegisterForm({
 
   const validate = () => {
     const e: typeof errors = {};
-    if (!name.trim()) e.name = "Nama wajib diisi.";
+    if (!name.trim() || name.trim().length < 2)
+      e.name = "Nama minimal 2 karakter.";
     if (!email.trim()) e.email = "Email wajib diisi.";
     else if (!/\S+@\S+\.\S+/.test(email)) e.email = "Format email tidak valid.";
     if (!password) e.password = "Kata sandi wajib diisi.";
-    else if (password.length < 6) e.password = "Minimal 6 karakter.";
+    else if (password.length < 8) e.password = "Minimal 8 karakter.";
+    else if (!/[A-Z]/.test(password)) e.password = "Harus ada 1 huruf kapital.";
+    else if (!/[0-9]/.test(password)) e.password = "Harus ada 1 angka.";
     return e;
   };
 
@@ -71,14 +74,16 @@ export function RegisterForm({
       className="flex flex-col gap-4"
     >
       <div>
-        <h2 className="text-2xl font-bold text-brand-black">Buat Akun Baru</h2>
-        <p className="text-sm text-brand-muted mt-1">
+        <h2 className="text-2xl font-bold text-(--text-primary)">
+          Buat Akun Baru
+        </h2>
+        <p className="text-sm text-(--text-secondary) mt-1">
           Gratis. Tidak perlu kartu kredit.
         </p>
       </div>
 
       {errors.general && (
-        <div className="bg-red-50 border border-red-200 rounded-lg px-4 py-3 text-sm text-brand-danger">
+        <div className="bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 rounded-lg px-4 py-3 text-sm text-brand-danger">
           {errors.general}
         </div>
       )}
@@ -141,7 +146,7 @@ export function RegisterForm({
         Buat Akun
       </Button>
 
-      <p className="text-sm text-center text-brand-muted">
+      <p className="text-sm text-center text-(--text-secondary)">
         Sudah punya akun?{" "}
         <button
           type="button"
