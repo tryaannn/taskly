@@ -48,6 +48,7 @@ export function AddTaskForm({
   const [priority, setPriority] = useState<Priority>("medium");
   const [dueDate, setDueDate] = useState("");
   const [category, setCategory] = useState("");
+  const [isNewCategory, setIsNewCategory] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const [focused, setFocused] = useState(false);
   const [shake, setShake] = useState(false);
@@ -71,6 +72,7 @@ export function AddTaskForm({
     setPriority("medium");
     setDueDate("");
     setCategory("");
+    setIsNewCategory(false);
     setExpanded(false);
     ref.current?.focus();
   };
@@ -198,27 +200,52 @@ export function AddTaskForm({
             <label className="flex items-center gap-1.5 text-xs text-(--text-secondary)">
               <Tag className="h-3.5 w-3.5" />
               <span>Kategori</span>
-              {categories.length > 0 ? (
-                <select
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  className="ml-1 text-xs border border-(--border-default) rounded-md px-2 py-1 bg-(--bg-card) text-(--text-primary) focus:outline-none focus:ring-1 focus:ring-brand-blue"
-                >
-                  <option value="">Pilih atau buat baru...</option>
-                  {categories.map((c) => (
-                    <option key={c} value={c}>
-                      {c}
-                    </option>
-                  ))}
-                </select>
+              {categories.length > 0 && !isNewCategory ? (
+                <div className="flex items-center gap-1">
+                  <select
+                    value={category}
+                    onChange={(e) => {
+                      if (e.target.value === "__new__") {
+                        setIsNewCategory(true);
+                        setCategory("");
+                      } else {
+                        setCategory(e.target.value);
+                      }
+                    }}
+                    className="ml-1 text-xs border border-(--border-default) rounded-md px-2 py-1 bg-(--bg-card) text-(--text-primary) focus:outline-none focus:ring-1 focus:ring-brand-blue"
+                  >
+                    <option value="">Pilih kategori...</option>
+                    {categories.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                    <option value="__new__">+ Buat kategori baru...</option>
+                  </select>
+                </div>
               ) : (
-                <input
-                  type="text"
-                  value={category}
-                  onChange={(e) => setCategory(e.target.value)}
-                  placeholder="cth: Kuliah, Kerja..."
-                  className="ml-1 text-xs border border-(--border-default) rounded-md px-2 py-1 bg-(--bg-card) text-(--text-primary) focus:outline-none focus:ring-1 focus:ring-brand-blue w-36"
-                />
+                <div className="flex items-center gap-1">
+                  <input
+                    type="text"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
+                    placeholder="Nama kategori baru..."
+                    autoFocus={isNewCategory}
+                    className="ml-1 text-xs border border-(--border-default) rounded-md px-2 py-1 bg-(--bg-card) text-(--text-primary) focus:outline-none focus:ring-1 focus:ring-brand-blue w-36"
+                  />
+                  {categories.length > 0 && isNewCategory && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsNewCategory(false);
+                        setCategory("");
+                      }}
+                      className="text-[10px] text-(--text-secondary) hover:text-(--text-primary) px-1"
+                    >
+                      Batal
+                    </button>
+                  )}
+                </div>
               )}
             </label>
           </motion.div>

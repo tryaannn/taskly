@@ -118,7 +118,7 @@ export function RegisterForm({
         label="Kata Sandi"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
-        placeholder="Min. 6 karakter"
+        placeholder="Min. 8 karakter, 1 huruf kapital, 1 angka"
         error={errors.password}
         leftIcon={<Lock className="h-4 w-4" />}
         rightIcon={
